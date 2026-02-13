@@ -3,6 +3,7 @@ import 'package:sappiire/constants/app_colors.dart';
 import 'package:sappiire/mobile/widgets/custom_button.dart';
 import 'package:sappiire/mobile/widgets/custom_text_field.dart';
 import 'package:sappiire/mobile/screens/auth/manage_info_screen.dart';
+import 'package:sappiire/mobile/screens/auth/signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -133,8 +134,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 40, // Slimmer button
                       width: double.infinity,
                       child: CustomButton(
-                        text: 'Sign in',
-                        onPressed: () {},
+                        text: 'Sign up',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                          );
+                        },
                         backgroundColor: Colors.transparent,
                         outlineButton: true,
                         textColor: AppColors.white,

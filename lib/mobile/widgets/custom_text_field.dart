@@ -6,6 +6,7 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final TextEditingController? controller;
   final Icon? prefixIcon; // Optional icon for the text field
+  final FormFieldValidator<String>? validator; // new validator field
 
   const CustomTextField({
     super.key,
@@ -13,6 +14,7 @@ class CustomTextField extends StatelessWidget {
     this.obscureText = false,
     this.controller,
     this.prefixIcon,
+    this.validator,
   });
 
   @override
@@ -21,18 +23,27 @@ class CustomTextField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white.withOpacity(0.1), // Semi-transparent white
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.buttonOutlineBlue, width: 2), // Blue border
+        border: Border.all(
+          color: AppColors.buttonOutlineBlue,
+          width: 2,
+        ), // Blue border
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: obscureText,
+        validator: validator,
         style: const TextStyle(color: AppColors.white), // Text color
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(color: AppColors.white.withOpacity(0.6)), // Hint text color
+          hintStyle: TextStyle(
+            color: AppColors.white.withOpacity(0.6),
+          ), // Hint text color
           prefixIcon: prefixIcon,
           border: InputBorder.none, // Remove default border
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
         ),
       ),
     );

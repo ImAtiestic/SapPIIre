@@ -3,6 +3,7 @@ import 'package:sappiire/constants/app_colors.dart';
 import 'package:sappiire/mobile/widgets/custom_button.dart';
 import 'package:sappiire/mobile/widgets/custom_text_field.dart';
 import 'package:sappiire/mobile/screens/auth/manage_info_screen.dart';
+import 'package:sappiire/mobile/screens/auth/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,12 +14,13 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService(); // 🔹 Initialize auth service
+  bool _isLoading = false; // 🔹 Loading state
 
   // Personal information
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _suffixController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -34,7 +36,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _firstNameController.dispose();
     _middleNameController.dispose();
     _lastNameController.dispose();
-    _suffixController.dispose();
     _dobController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -44,14 +45,61 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _onCreateAccount() {
-    if (_formKey.currentState?.validate() ?? false) {
-      // At this point we'd normally send the data to the backend / database.
-      // For now just proceed to the "success" screen.
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
+  // 🔹 UPDATED: Create account with Supabase
+  Future<void> _onCreateAccount() async {
+    if (_dobController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select your date of birth'),
+          backgroundColor: Colors.red,
+        ),
       );
+      return;
+    }
+
+    if (_formKey.currentState?.validate() ?? false) {
+      setState(() => _isLoading = true);
+
+      // 🔹 Call signup service
+      final result = await _authService.signUp(
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        middleName: _middleNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        dateOfBirth: _dobController.text, // MM/DD/YYYY format
+        phoneNumber: _phoneController.text.trim(),
+      );
+
+      setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // 🔹 Success - Show success screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SignUpSuccessScreen(userId: result['user_id']),
+          ),
+        );
+      } else {
+        // 🔹 Error - Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -81,6 +129,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return 'Passwords do not match';
     }
     return null;
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1A237E),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _dobController.text =
+            '${pickedDate.month}/${pickedDate.day}/${pickedDate.year}';
+      });
+    }
   }
 
   @override
@@ -127,15 +204,45 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   validator: _nonEmptyValidator,
                 ),
                 const SizedBox(height: 10),
-                CustomTextField(
-                  hintText: 'Suffix',
-                  controller: _suffixController,
-                ),
-                const SizedBox(height: 10),
-                CustomTextField(
-                  hintText: 'Date of Birth (MM/DD/YYYY)',
-                  controller: _dobController,
-                  validator: _nonEmptyValidator,
+                GestureDetector(
+                  onTap: _selectDate,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.buttonOutlineBlue,
+                        width: 2,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today,
+                          color: AppColors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _dobController.text.isEmpty
+                                ? 'Date of Birth'
+                                : _dobController.text,
+                            style: TextStyle(
+                              color: _dobController.text.isEmpty
+                                  ? AppColors.white.withOpacity(0.6)
+                                  : AppColors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 CustomTextField(
@@ -145,7 +252,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 10),
                 CustomTextField(
-                  hintText: 'Phone Number',
+                  hintText: 'Phone Number (09XXXXXXXXX)',
                   controller: _phoneController,
                   validator: _nonEmptyValidator,
                 ),
@@ -196,12 +303,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                CustomButton(
-                  text: 'Create Account',
-                  onPressed: _onCreateAccount,
-                  backgroundColor: AppColors.white,
-                  textColor: AppColors.primaryBlue,
-                ),
+                // 🔹 Show loading indicator
+                _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    : CustomButton(
+                        text: 'Create Account',
+                        onPressed: _onCreateAccount,
+                        backgroundColor: AppColors.white,
+                        textColor: AppColors.primaryBlue,
+                      ),
 
                 const SizedBox(height: 20),
                 Row(
@@ -234,9 +346,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-/// Simple placeholder shown after "sign up" completes.
+// 🔹 UPDATED: Success screen with userId
 class SignUpSuccessScreen extends StatelessWidget {
-  const SignUpSuccessScreen({super.key});
+  final String userId;
+
+  const SignUpSuccessScreen({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +362,14 @@ class SignUpSuccessScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Icon(
+                Icons.check_circle_outline,
+                color: Colors.white,
+                size: 80,
+              ),
+              const SizedBox(height: 20),
               const Text(
-                'All signed in!',
+                'All signed up!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.white,
@@ -259,7 +379,7 @@ class SignUpSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Welcome to the Autofill App',
+                'Welcome to SapPIIre Autofill App',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.white, fontSize: 16),
               ),
@@ -269,7 +389,9 @@ class SignUpSuccessScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const ManageInfoScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => ManageInfoScreen(userId: userId),
+                    ),
                   );
                 },
                 backgroundColor: AppColors.white,

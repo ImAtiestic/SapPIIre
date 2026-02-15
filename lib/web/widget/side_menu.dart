@@ -3,7 +3,8 @@ import 'package:sappiire/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
   final String activePath;
-  const SideMenu({super.key, required this.activePath});
+  final VoidCallback? onLogout;
+  const SideMenu({super.key, required this.activePath, this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +23,7 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.white),
             title: const Text("Log Out", style: TextStyle(color: AppColors.white)),
-            onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            onTap: onLogout,
           ),
           const SizedBox(height: 20),
         ],

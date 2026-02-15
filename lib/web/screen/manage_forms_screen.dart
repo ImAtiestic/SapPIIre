@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sappiire/constants/app_colors.dart';
 import 'package:sappiire/web/widget/side_menu.dart';
 import 'package:sappiire/resources/static_form_input.dart';
+import 'package:sappiire/web/screen/web_login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ManageFormsScreen extends StatefulWidget {
@@ -140,13 +141,46 @@ class _ManageFormsScreenState extends State<ManageFormsScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      // Cancel any active subscriptions
+      _formSubscription?.cancel();
+      
+      // Mark current session as closed
+      if (_currentSessionId != "WAITING-FOR-SESSION") {
+        await Supabase.instance.client
+            .from('form_sessions')
+            .update({'status': 'closed'})
+            .eq('id', _currentSessionId);
+      }
+      
+      // Sign out from Supabase
+      await Supabase.instance.client.auth.signOut();
+      
+      // Navigate to login screen
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const WorkerLoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint("Logout Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Logout Error: $e")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FE),
       body: Row(
         children: [
-          const SideMenu(activePath: "Forms"),
+          SideMenu(activePath: "Forms", onLogout: _handleLogout),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(35.0),

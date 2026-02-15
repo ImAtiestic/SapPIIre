@@ -87,64 +87,67 @@ class AuthService {
   // LOGIN - Verify credentials
   // ================================================================
   Future<Map<String, dynamic>> login({
-  required String username,
-  required String password,
-}) async {
-  try {
-    // 1. Hash the password
-    final hashedPassword = _hashPassword(password);
+    required String username,
+    required String password,
+  }) async {
+    try {
+      // 1. Hash the password
+      final hashedPassword = _hashPassword(password);
 
-    // 2. Query user_accounts with username and password
-    final response = await _supabase
-        .from('user_accounts')
-        .select('user_id, username, email, is_active')
-        .eq('username', username)
-        .eq('password', hashedPassword)
-        .maybeSingle();
+      // 2. Query user_accounts by username first
+      final account = await _supabase
+          .from('user_accounts')
+          .select('user_id, username, email, password, is_active')
+          .eq('username', username)
+          .maybeSingle();
 
-    if (response == null) {
+      if (account == null) {
+        return {
+          'success': false,
+          'code': 'no_user',
+          'message': 'Account does not exist'
+        };
+      }
+
+      // 3. Verify password
+      if (account['password'] != hashedPassword) {
+        return {
+          'success': false,
+          'code': 'wrong_password',
+          'message': 'Invalid username or password'
+        };
+      }
+
+      if (account['is_active'] == false) {
+        return {
+          'success': false,
+          'code': 'deactivated',
+          'message': 'Account is deactivated'
+        };
+      }
+
+      // 4. Get user profile data
+      final profileResponse = await _supabase
+          .from('user_profiles')
+          .select()
+          .eq('user_id', account['user_id'])
+          .maybeSingle();
+
+      return {
+        'success': true,
+        'message': 'Login successful',
+        'user_id': account['user_id'],
+        'username': account['username'],
+        'email': account['email'],
+        'profile': profileResponse,
+      };
+    } catch (e) {
       return {
         'success': false,
-        'message': 'Invalid username or password'
+        'message': 'Error during login: ${e.toString()}'
       };
     }
-
-    if (response['is_active'] == false) {
-      return {
-        'success': false,
-        'message': 'Account is deactivated'
-      };
-    }
-
-    // 🔹 REMOVED: Update last_login (column doesn't exist)
-    // await _supabase
-    //     .from('user_accounts')
-    //     .update({'last_login': DateTime.now().toIso8601String()})
-    //     .eq('user_id', response['user_id']);
-
-    // 4. Get user profile data
-    final profileResponse = await _supabase
-        .from('user_profiles')
-        .select()
-        .eq('user_id', response['user_id'])
-        .maybeSingle();
-
-    return {
-      'success': true,
-      'message': 'Login successful',
-      'user_id': response['user_id'],
-      'username': response['username'],
-      'email': response['email'],
-      'profile': profileResponse,
-    };
-
-  } catch (e) {
-    return {
-      'success': false,
-      'message': 'Error during login: ${e.toString()}'
-    };
   }
-}
 
   // ================================================================
   // GET USER PROFILE - Retrieve profile data
